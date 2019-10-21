@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -38,6 +39,7 @@ type Loki struct {
 	BatchSize int
 	lineChan  chan *logrus.Entry
 	hostname  string
+	wg        sync.WaitGroup
 }
 
 func NewLoki(URL string, batchSize, batchWait int) (*Loki, error) {
@@ -64,7 +66,14 @@ func NewLoki(URL string, batchSize, batchWait int) (*Loki, error) {
 		u.RawQuery = q.Encode()
 		l.LokiURL = u.String()
 	}
+	l.wg.Add(1)
+	go l.run()
 	return l, nil
+}
+
+func (l *Loki) Close() {
+	close(l.lineChan)
+	l.wg.Wait()
 }
 
 func (l *Loki) Fire(entry *logrus.Entry) error {
@@ -76,7 +85,7 @@ func (l *Loki) Levels() []logrus.Level {
 	return logrus.AllLevels
 }
 
-func (l *Loki) Run() {
+func (l *Loki) run() {
 	var (
 		curPktTime  time.Time
 		lastPktTime time.Time
@@ -84,6 +93,7 @@ func (l *Loki) Run() {
 		batch       = map[model.Fingerprint]*Stream{}
 		batchSize   = 0
 	)
+	defer l.wg.Done()
 
 	defer func() {
 		if err := l.sendBatch(batch); err != nil {
