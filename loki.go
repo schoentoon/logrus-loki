@@ -39,6 +39,7 @@ type Loki struct {
 	BatchSize int
 	lineChan  chan *logrus.Entry
 	hostname  string
+	data      map[model.LabelName]model.LabelValue
 	wg        sync.WaitGroup
 }
 
@@ -48,6 +49,7 @@ func NewLoki(URL string, batchSize, batchWait int) (*Loki, error) {
 		BatchSize: batchSize,
 		BatchWait: time.Duration(batchWait) * time.Second,
 		lineChan:  make(chan *logrus.Entry, batchSize),
+		data:      make(map[model.LabelName]model.LabelValue),
 	}
 
 	hostname, err := os.Hostname()
@@ -74,6 +76,10 @@ func NewLoki(URL string, batchSize, batchWait int) (*Loki, error) {
 func (l *Loki) Close() {
 	close(l.lineChan)
 	l.wg.Wait()
+}
+
+func (l *Loki) AddData(key, value string) {
+	l.data[model.LabelName(key)] = model.LabelValue(value)
 }
 
 func (l *Loki) Fire(entry *logrus.Entry) error {
@@ -123,6 +129,9 @@ func (l *Loki) run() {
 			l.entry = entry{model.LabelSet{}, &Entry{Timestamp: ts}}
 			l.entry.labels["level"] = model.LabelValue(ll.Level.String())
 			l.entry.labels["hostname"] = model.LabelValue(l.hostname)
+			for key, value := range l.data {
+				l.entry.labels[key] = value
+			}
 			l.entry.Entry.Line = ll.Message
 
 			if batchSize+len(l.entry.Line) > l.BatchSize {
