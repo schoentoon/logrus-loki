@@ -132,7 +132,11 @@ func (l *Loki) run() {
 			for key, value := range l.data {
 				l.entry.labels[key] = value
 			}
-			l.entry.Entry.Line = ll.Message
+			var err error
+			l.entry.Entry.Line, err = ll.String()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%v ERROR: logrus format error: %v\n", err)
+			}
 
 			if batchSize+len(l.entry.Line) > l.BatchSize {
 				if err := l.sendBatch(batch); err != nil {
