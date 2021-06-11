@@ -129,13 +129,16 @@ func (l *Loki) run() {
 			l.entry = entry{model.LabelSet{}, &Entry{Timestamp: ts}}
 			l.entry.labels["level"] = model.LabelValue(ll.Level.String())
 			l.entry.labels["hostname"] = model.LabelValue(l.hostname)
+			for key, value := range ll.Data {
+				l.entry.labels[model.LabelName(key)] = model.LabelValue(fmt.Sprintf("%v", value))
+			}
 			for key, value := range l.data {
 				l.entry.labels[key] = value
 			}
 			var err error
 			l.entry.Entry.Line, err = ll.String()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v ERROR: logrus format error: %v\n", err)
+				fmt.Fprintf(os.Stderr, "ERROR: logrus format error: %v\n", err)
 			}
 
 			if batchSize+len(l.entry.Line) > l.BatchSize {
