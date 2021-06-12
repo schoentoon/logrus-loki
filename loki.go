@@ -44,19 +44,22 @@ type Loki struct {
 }
 
 func NewLoki(URL string, batchSize, batchWait int) (*Loki, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+	return NewLokiCustomHostname(URL, batchSize, batchWait, hostname)
+}
+
+func NewLokiCustomHostname(URL string, batchSize, batchWait int, hostname string) (*Loki, error) {
 	l := &Loki{
 		LokiURL:   URL,
 		BatchSize: batchSize,
 		BatchWait: time.Duration(batchWait) * time.Second,
 		lineChan:  make(chan *logrus.Entry, batchSize),
 		data:      make(map[model.LabelName]model.LabelValue),
+		hostname:  hostname,
 	}
-
-	hostname, err := os.Hostname()
-	if err != nil {
-		return nil, err
-	}
-	l.hostname = hostname
 
 	u, err := url.Parse(l.LokiURL)
 	if err != nil {
