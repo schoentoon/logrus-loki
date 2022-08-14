@@ -43,7 +43,7 @@ type Loki struct {
 	wg        sync.WaitGroup
 }
 
-func NewLoki(URL string, batchSize, batchWait int) (*Loki, error) {
+func NewLoki(URL string, batchSize int, batchWait time.Duration) (*Loki, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
@@ -51,11 +51,15 @@ func NewLoki(URL string, batchSize, batchWait int) (*Loki, error) {
 	return NewLokiCustomHostname(URL, batchSize, batchWait, hostname)
 }
 
-func NewLokiCustomHostname(URL string, batchSize, batchWait int, hostname string) (*Loki, error) {
+func NewLokiDefaults(URL string) (*Loki, error) {
+	return NewLoki(URL, 1024*1024, time.Second)
+}
+
+func NewLokiCustomHostname(URL string, batchSize int, batchWait time.Duration, hostname string) (*Loki, error) {
 	l := &Loki{
 		LokiURL:   URL,
 		BatchSize: batchSize,
-		BatchWait: time.Duration(batchWait) * time.Second,
+		BatchWait: batchWait,
 		lineChan:  make(chan *logrus.Entry, batchSize),
 		data:      make(map[model.LabelName]model.LabelValue),
 		hostname:  hostname,
