@@ -23,7 +23,7 @@ import (
 
 const (
 	contentType  = "application/x-protobuf"
-	postPath     = "/api/prom/push"
+	postPath     = "/loki/api/v1/push"
 	maxErrMsgLen = 1024
 )
 
